@@ -5,22 +5,23 @@ package rgbmatrix
 #cgo LDFLAGS: -lrgbmatrix -L${SRCDIR}/vendor/rpi-rgb-led-matrix/lib -lstdc++ -lm
 #include <led-matrix-c.h>
 
-void led_matrix_swap(struct RGBLedMatrix *matrix, struct LedCanvas *offscreen_canvas,
-                     int width, int height, const uint32_t pixels[]) {
-
+void ledmatrix_set_pixel(struct RGBLedMatrix *matrix, struct LedCanvas *offscreen_canvas,
+  int startx, int endx, int starty, int endy, int width, const uint32_t pixels[]) {
 
   int i, x, y;
   uint32_t color;
-  for (x = 0; x < width; ++x) {
-    for (y = 0; y < height; ++y) {
+  for (x = startx; x < endx; ++x) {
+    for (y = starty; y < endy; ++y) {
       i = x + (y * width);
-      color = pixels[i];
+	  color = pixels[i];
 
       led_canvas_set_pixel(offscreen_canvas, x, y,
         (color >> 16) & 255, (color >> 8) & 255, color & 255);
     }
   }
+}
 
+void led_matrix_swap(struct RGBLedMatrix *matrix, struct LedCanvas *offscreen_canvas) {
   offscreen_canvas = led_matrix_swap_on_vsync(matrix, offscreen_canvas);
 }
 
@@ -40,7 +41,10 @@ import "C"
 import (
 	"fmt"
 	"image/color"
+	//"log"
 	"os"
+	//"sync"
+	//"time"
 	"unsafe"
 
 	"github.com/mcuadros/go-rpi-rgb-led-matrix/emulator"
@@ -228,16 +232,44 @@ func (c *RGBLedMatrix) Apply(leds []color.Color) error {
 	return c.Render()
 }
 
+var count = 0
+
 // Render update the display with the data from the LED buffer
 func (c *RGBLedMatrix) Render() error {
 	w, h := c.Config.geometry()
 
-	C.led_matrix_swap(
-		c.matrix,
-		c.buffer,
-		C.int(w), C.int(h),
-		(*C.uint32_t)(unsafe.Pointer(&c.leds[0])),
-	)
+	//now := time.Now()
+
+	//var wg sync.WaitGroup
+	//wg.Add(2)
+	//go func() {
+		C.ledmatrix_set_pixel(c.matrix, c.buffer,
+			C.int(0), C.int(w), C.int(0), C.int(h), C.int(w),
+			(*C.uint32_t)(unsafe.Pointer(&c.leds[0])))
+/*		wg.Done()
+	}()
+	go func() {
+		C.ledmatrix_set_pixel(c.matrix, c.buffer,
+			C.int(w/2), C.int(w), C.int(0), C.int(h), C.int(w),
+			(*C.uint32_t)(unsafe.Pointer(&c.leds[0])))
+		wg.Done()
+	}()
+
+	wg.Wait()
+*/
+	//t1 := time.Now().Sub(now)
+
+	C.led_matrix_swap(c.matrix, c.buffer)
+
+	//t2 := time.Now().Sub(now) - t1
+
+	/*
+	count++
+	if count%2048 == 0 {
+		log.Println("[Info] Write t1:\t", t1)
+		log.Println("[Info] Write t2:\t", t2)
+	}
+	*/
 
 	c.leds = make([]C.uint32_t, w*h)
 	return nil
