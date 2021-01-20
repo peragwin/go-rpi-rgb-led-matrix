@@ -56,6 +56,7 @@ var DefaultConfig = HardwareConfig{
 	PWMLSBNanoseconds: 130,
 	Brightness:        100,
 	ScanMode:          Progressive,
+	PanelType:         "regular",
 }
 
 // HardwareConfig rgb-led-matrix configuration
@@ -97,6 +98,10 @@ type HardwareConfig struct {
 
 	// Name of GPIO mapping used
 	HardwareMapping string
+
+	// Type of panel driver chipset.
+	// Options: "" (default / shift register), "FM6126A".
+	PanelType string
 }
 
 func (c *HardwareConfig) geometry() (width, height int) {
@@ -114,6 +119,7 @@ func (c *HardwareConfig) toC() *C.struct_RGBLedMatrixOptions {
 	o.brightness = C.int(c.Brightness)
 	o.scan_mode = C.int(c.ScanMode)
 	o.hardware_mapping = C.CString(c.HardwareMapping)
+	o.panel_type = C.CString(c.PanelType)
 
 	if c.ShowRefreshRate == true {
 		C.set_show_refresh_rate(o, C.int(1))
